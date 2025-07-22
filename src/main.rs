@@ -27,7 +27,11 @@ impl Board {
         grid[4][3] = Cell::Black;
         grid[4][4] = Cell::White;
 
-        Self { grid, black_score, white_score }
+        Self {
+            grid,
+            black_score,
+            white_score,
+        }
     }
 
     fn get_legal_moves(self, player: Cell) -> Vec<Position> {
@@ -37,7 +41,16 @@ impl Board {
             _ => return vec![], // return no legal moves if player is not valid
         };
 
-        let directions: [(i32, i32); 8] = [(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)];
+        let directions: [(i32, i32); 8] = [
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, 1),
+            (0, -1),
+            (-1, 1),
+            (-1, 0),
+            (-1, -1),
+        ];
 
         let mut legal_moves: Vec<Position> = vec![];
 
@@ -57,12 +70,10 @@ impl Board {
                         let cell: Cell = self.grid[x as usize][y as usize];
                         if cell == opponent {
                             found_opponent = true;
-                        }
-                        else if cell == player && found_opponent {
+                        } else if cell == player && found_opponent {
                             legal_moves.push((row, col));
                             break;
-                        }
-                        else {
+                        } else {
                             break;
                         }
 
@@ -72,19 +83,17 @@ impl Board {
                 }
             }
         }
-        
+
         legal_moves
     }
 
     fn place_piece(&mut self, player: Cell, row: usize, col: usize) {
         let legal_moves = self.get_legal_moves(player);
 
-
         if !legal_moves.contains(&(row, col)) {
             println!("Illegal move!");
             return;
         }
-
 
         let opponent: Cell = match player {
             Cell::Black => Cell::White,
@@ -92,36 +101,38 @@ impl Board {
             _ => return, // can't place a piece if it's not white or black
         };
 
-
-        let directions: [(i32, i32); 8] = [(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)];
-
+        let directions: [(i32, i32); 8] = [
+            (1, 1),
+            (1, 0),
+            (1, -1),
+            (0, 1),
+            (0, -1),
+            (-1, 1),
+            (-1, 0),
+            (-1, -1),
+        ];
 
         self.grid[row][col] = player;
         if player == Cell::Black {
             self.black_score += 1;
-        }
-        else {
+        } else {
             self.white_score += 1;
         }
         for (dx, dy) in directions {
             let mut x: i32 = row as i32 + dx;
             let mut y: i32 = col as i32 + dy;
 
-
             let mut to_flip: Vec<Position> = vec![];
-
 
             while x >= 0 && x < 8 && y >= 0 && y < 8 {
                 let cell: Cell = self.grid[x as usize][y as usize];
                 if cell == opponent {
                     to_flip.push((x as usize, y as usize))
-                }
-                else if cell == player {
+                } else if cell == player {
                     if player == Cell::Black {
                         self.black_score += to_flip.len();
                         self.white_score -= to_flip.len();
-                    }
-                    else {
+                    } else {
                         self.white_score += to_flip.len();
                         self.black_score -= to_flip.len();
                     }
@@ -129,11 +140,9 @@ impl Board {
                         self.grid[*fx][*fy] = player
                     }
                     break;
-                }
-                else {
+                } else {
                     break;
                 }
-
 
                 x += dx;
                 y += dy;
@@ -141,13 +150,11 @@ impl Board {
         }
     }
 
-
     fn display(self) {
         println!("  0 1 2 3 4 5 6 7");
         for (i, row) in self.grid.iter().enumerate() {
             print!("{} ", i);
             for col in row.iter() {
-                
                 let symbol: &'static str = match col {
                     Cell::Empty => ".",
                     Cell::White => "W",
