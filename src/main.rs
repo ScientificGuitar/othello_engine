@@ -8,6 +8,8 @@ enum Cell {
 #[derive(Clone, Copy)]
 struct Board {
     grid: [[Cell; 8]; 8],
+    black_score: usize,
+    white_score: usize,
 }
 
 type Position = (usize, usize);
@@ -15,13 +17,15 @@ type Position = (usize, usize);
 impl Board {
     fn new() -> Self {
         let mut grid: [[Cell; 8]; 8] = [[Cell::Empty; 8]; 8];
+        let black_score = 2;
+        let white_score = 2;
 
         grid[3][3] = Cell::White;
         grid[3][4] = Cell::Black;
         grid[4][3] = Cell::Black;
         grid[4][4] = Cell::White;
 
-        Self { grid }
+        Self { grid, black_score, white_score }
     }
 
     fn get_legal_moves(self, player: Cell) -> Vec<Position> {
@@ -70,6 +74,72 @@ impl Board {
         legal_moves
     }
 
+    fn place_piece(&mut self, player: Cell, row: usize, col: usize) {
+        let legal_moves = self.get_legal_moves(player);
+
+
+        if !legal_moves.contains(&(row, col)) {
+            println!("Illegal move!");
+            return;
+        }
+
+
+        let opponent: Cell = match player {
+            Cell::Black => Cell::White,
+            Cell::White => Cell::Black,
+            _ => return, // can't place a piece if it's not white or black
+        };
+
+
+        let directions: [(i32, i32); 8] = [(1, 1), (1, 0), (1, -1), (0, 1), (0, -1), (-1, 1), (-1, 0), (-1, -1)];
+
+
+        self.grid[row][col] = player;
+        if player == Cell::Black {
+            self.black_score += 1;
+        }
+        else {
+            self.white_score += 1;
+        }
+        for (dx, dy) in directions {
+            let mut x: i32 = row as i32 + dx;
+            let mut y: i32 = col as i32 + dy;
+
+
+            let mut to_flip: Vec<Position> = vec![];
+
+
+            while x >= 0 && x < 8 && y >= 0 && y < 8 {
+                let cell: Cell = self.grid[x as usize][y as usize];
+                if cell == opponent {
+                    to_flip.push((x as usize, y as usize))
+                }
+                else if cell == player {
+                    if player == Cell::Black {
+                        self.black_score += to_flip.len();
+                        self.white_score -= to_flip.len();
+                    }
+                    else {
+                        self.white_score += to_flip.len();
+                        self.black_score -= to_flip.len();
+                    }
+                    for (fx, fy) in &to_flip {
+                        self.grid[*fx][*fy] = player
+                    }
+                    break;
+                }
+                else {
+                    break;
+                }
+
+
+                x += dx;
+                y += dy;
+            }
+        }
+    }
+
+
     fn display(self) {
         println!("  0 1 2 3 4 5 6 7");
         for (i, row) in self.grid.iter().enumerate() {
@@ -85,14 +155,15 @@ impl Board {
             }
             println!();
         }
+
+        println!("Score: (B) {} - {} (W)", self.black_score, self.white_score)
     }
 }
 
 
 fn main() {
-    let board: Board = Board::new();
+    let mut board: Board = Board::new();
     board.display();
-
-    println!("White legal moves: {:?}", board.get_legal_moves(Cell::White));
-    println!("Black legal moves: {:?}", board.get_legal_moves(Cell::Black));
+    board.place_piece(Cell::Black, 2, 3);
+    board.display();
 }
