@@ -87,6 +87,59 @@ impl Board {
         legal_moves
     }
 
+    fn pick_best_move(self, player: Cell, move_list: Vec<Position>) -> Position {
+        let mut best_move_difference = 0;
+        let mut best_move = (0, 0); // TODO: Handle this better
+        for chosen_move in move_list {
+            let opponent: Cell = match player {
+                Cell::Black => Cell::White,
+                Cell::White => Cell::Black,
+                _ => return best_move, // TODO: Handle this better
+            };
+
+            let directions: [(i32, i32); 8] = [
+                (1, 1),
+                (1, 0),
+                (1, -1),
+                (0, 1),
+                (0, -1),
+                (-1, 1),
+                (-1, 0),
+                (-1, -1),
+            ];
+
+            let mut score_diff = 0;
+            for (dx, dy) in directions {
+                let mut x: i32 = chosen_move.0 as i32 + dx;
+                let mut y: i32 = chosen_move.1 as i32 + dy;
+
+                let mut score_to_add = 0;
+
+                while x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    let cell: Cell = self.grid[x as usize][y as usize];
+                    if cell == opponent {
+                        score_to_add += 1;
+                    } else if cell == player {
+                        score_diff += score_to_add;
+                        break;
+                    } else {
+                        break;
+                    }
+
+                    x += dx;
+                    y += dy;
+                }
+            }
+
+            if score_diff > best_move_difference {
+                best_move_difference = score_diff;
+                best_move = chosen_move;
+            }
+        }
+
+        best_move
+    }
+
     fn place_piece(&mut self, player: Cell, row: usize, col: usize) {
         let legal_moves = self.get_legal_moves(player);
 
@@ -178,25 +231,44 @@ fn switch_player(player: Cell) -> Cell {
 }
 
 fn main() {
-    let mut board: Board = Board::new();
-    let mut current_player = Cell::Black;
+    let mut black_wins = 0;
+    let mut white_wins = 0;
+    let mut draws = 0;
 
-    // basic game loop
-    loop {
-        let legal_moves = board.get_legal_moves(current_player);
-        if legal_moves.is_empty() {
-            current_player = switch_player(current_player);
-            let opponent_moves = board.get_legal_moves(current_player);
-            if opponent_moves.is_empty() {
-                println!("Game over!");
-                board.display();
-                break;
+    for _ in 0..1000 {
+        let mut board: Board = Board::new();
+        let mut current_player = Cell::Black;
+
+        // basic game loop
+        loop {
+            let legal_moves = board.get_legal_moves(current_player);
+            if legal_moves.is_empty() {
+                current_player = switch_player(current_player);
+                let opponent_moves = board.get_legal_moves(current_player);
+                if opponent_moves.is_empty() {
+                    if board.black_score > board.white_score {
+                        black_wins += 1;
+                    } else if board.white_score > board.black_score {
+                        white_wins += 1;
+                    } else {
+                        draws += 1;
+                    }
+                    break;
+                }
+                continue;
             }
-            continue;
-        }
 
-        let random_move = legal_moves.choose(&mut rand::rng()).unwrap();
-        board.place_piece(current_player, random_move.0, random_move.1);
-        current_player = switch_player(current_player);
+            let chosen_move: (usize, usize);
+            if current_player == Cell::Black {
+                chosen_move = board.pick_best_move(current_player, legal_moves)
+            } else {
+                chosen_move = *legal_moves.choose(&mut rand::rng()).unwrap();
+            }
+
+            board.place_piece(current_player, chosen_move.0, chosen_move.1);
+            current_player = switch_player(current_player);
+        }
     }
+
+    println!("Black Wins: {}, White Wins: {}, Draws: {}", black_wins, white_wins, draws);
 }
