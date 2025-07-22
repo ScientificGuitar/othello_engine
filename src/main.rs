@@ -1,3 +1,5 @@
+use rand::prelude::IndexedRandom;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Cell {
     Empty,
@@ -160,10 +162,34 @@ impl Board {
     }
 }
 
+fn switch_player(player: Cell) -> Cell {
+    match player {
+        Cell::Black => Cell::White,
+        Cell::White => Cell::Black,
+        _ => Cell::Empty,
+    }
+}
 
 fn main() {
     let mut board: Board = Board::new();
-    board.display();
-    board.place_piece(Cell::Black, 2, 3);
-    board.display();
+    let mut current_player = Cell::Black;
+
+    // basic game loop
+    loop {
+        let legal_moves = board.get_legal_moves(current_player);
+        if legal_moves.is_empty() {
+            current_player = switch_player(current_player);
+            let opponent_moves = board.get_legal_moves(current_player);
+            if opponent_moves.is_empty() {
+                println!("Game over!");
+                board.display();
+                break;
+            }
+            continue;
+        }
+
+        let random_move = legal_moves.choose(&mut rand::rng()).unwrap();
+        board.place_piece(current_player, random_move.0, random_move.1);
+        current_player = switch_player(current_player);
+    }
 }
