@@ -50,19 +50,29 @@ impl Board {
                     continue;
                 }
 
-                for (dx, dy) in directions {
+                'outer: for (dx, dy) in directions {
                     let mut x: i32 = row as i32 + dx;
                     let mut y: i32 = col as i32 + dy;
 
-                    let mut found_opponent: bool = false;
+                    if x < 0 || x >= 8 || y < 0 || y >= 8 {
+                        continue;
+                    }
+
+                    if self.grid[x as usize][y as usize] != opponent {
+                        continue;
+                    }
+
+                    x += dx;
+                    y += dy;
 
                     while x >= 0 && x < 8 && y >= 0 && y < 8 {
                         let cell: Cell = self.grid[x as usize][y as usize];
                         if cell == opponent {
-                            found_opponent = true;
-                        } else if cell == player && found_opponent {
+                            x += dx;
+                            y += dy;
+                        } else if cell == player {
                             legal_moves.push((row, col));
-                            break;
+                            break 'outer;
                         } else {
                             break;
                         }
