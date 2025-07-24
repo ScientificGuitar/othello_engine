@@ -17,9 +17,9 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(board_size: usize) -> Self {
         Game {
-            board: Board::new(),
+            board: Board::new(board_size),
             turn: Cell::Black,
             state: GameState::WaitingForMove,
         }

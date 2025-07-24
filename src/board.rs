@@ -1,3 +1,5 @@
+use std::cmp;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Cell {
     Empty,
@@ -5,23 +7,31 @@ pub enum Cell {
     Black,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Board {
-    grid: [[Cell; 8]; 8],
+    grid: Vec<Vec<Cell>>,
+    size: usize,
 }
 
 pub type Position = (usize, usize);
 
 impl Board {
-    pub fn new() -> Self {
-        let mut grid: [[Cell; 8]; 8] = [[Cell::Empty; 8]; 8];
+    pub fn new(mut board_size: usize) -> Self {
+        if board_size % 2 == 1 {
+            board_size += 1;
+        }
+        let size = cmp::min(cmp::max(board_size, 2), 8);
+        let upper = size / 2;
+        let lower = upper - 1;
 
-        grid[3][3] = Cell::White;
-        grid[3][4] = Cell::Black;
-        grid[4][3] = Cell::Black;
-        grid[4][4] = Cell::White;
+        let mut grid = vec![vec![Cell::Empty; board_size]; board_size];
 
-        Self { grid }
+        grid[lower][lower] = Cell::White;
+        grid[lower][upper] = Cell::Black;
+        grid[upper][lower] = Cell::Black;
+        grid[upper][upper] = Cell::White;
+
+        Self { grid, size }
     }
 
     pub fn get_legal_moves(&self, player: Cell) -> Vec<Position> {
@@ -44,8 +54,8 @@ impl Board {
 
         let mut legal_moves: Vec<Position> = vec![];
 
-        for row in 0..8 {
-            for col in 0..8 {
+        for row in 0..self.size {
+            for col in 0..self.size {
                 if self.grid[row][col] != Cell::Empty {
                     continue;
                 }
@@ -54,7 +64,7 @@ impl Board {
                     let mut x: i32 = row as i32 + dx;
                     let mut y: i32 = col as i32 + dy;
 
-                    if x < 0 || x >= 8 || y < 0 || y >= 8 {
+                    if x < 0 || x >= self.size as i32 || y < 0 || y >= self.size as i32 {
                         continue;
                     }
 
@@ -65,7 +75,7 @@ impl Board {
                     x += dx;
                     y += dy;
 
-                    while x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    while x >= 0 && x < self.size as i32 && y >= 0 && y < self.size as i32 {
                         let cell: Cell = self.grid[x as usize][y as usize];
                         if cell == opponent {
                             x += dx;
@@ -114,7 +124,7 @@ impl Board {
 
             let mut to_flip: Vec<Position> = vec![];
 
-            while x >= 0 && x < 8 && y >= 0 && y < 8 {
+            while x >= 0 && x < self.size as i32 && y >= 0 && y < self.size as i32 {
                 let cell: Cell = self.grid[x as usize][y as usize];
                 if cell == opponent {
                     to_flip.push((x as usize, y as usize))
@@ -139,8 +149,8 @@ impl Board {
         let mut black_score = 0;
         let mut white_score = 0;
 
-        for row in 0..8 {
-            for col in 0..8 {
+        for row in 0..self.size {
+            for col in 0..self.size {
                 if self.grid[row][col] == Cell::Black {
                     black_score += 1;
                 } else if self.grid[row][col] == Cell::White {

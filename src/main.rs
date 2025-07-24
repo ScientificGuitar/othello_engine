@@ -14,7 +14,7 @@ fn main() {
     let mut draws = 0;
 
     for _ in 0..1000 {
-        let mut game = Game::new();
+        let mut game = Game::new(4);
 
         while !game.is_over() {
             let legal_moves = game.board.get_legal_moves(game.turn);
