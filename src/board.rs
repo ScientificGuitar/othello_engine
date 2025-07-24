@@ -86,9 +86,6 @@ impl Board {
                         } else {
                             break;
                         }
-
-                        x += dx;
-                        y += dy;
                     }
                 }
             }
@@ -125,7 +122,7 @@ impl Board {
             let mut to_flip: Vec<Position> = vec![];
 
             while x >= 0 && x < self.size as i32 && y >= 0 && y < self.size as i32 {
-                let cell: Cell = self.grid[x as usize][y as usize];
+                let cell: Cell = board.grid[x as usize][y as usize];
                 if cell == opponent {
                     to_flip.push((x as usize, y as usize))
                 } else if cell == player {
