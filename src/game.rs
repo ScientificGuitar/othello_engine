@@ -1,6 +1,6 @@
 use crate::board::{Board, Move, Player};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum GameState {
     InProgress,
     Winner(Player),
@@ -67,7 +67,15 @@ impl Game {
     }
 
     pub fn evaluate(&self) -> i32 {
+        if self.state == GameState::Winner(self.current_player) {
+            return 1000;
+        }
+        if self.state == GameState::Winner(self.current_player.opponent()) {
+            return -1000;
+        }
+
         let (black, white) = self.board.count_pieces();
+
         match self.current_player {
             Player::Black => black - white,
             Player::White => white - black,
