@@ -1,11 +1,13 @@
 use crate::board::{Board, Move, Player};
 
+#[derive(Clone)]
 pub enum GameState {
     InProgress,
     Winner(Player),
     Draw,
 }
 
+#[derive(Clone)]
 pub struct Game {
     pub board: Board,
     pub current_player: Player,
@@ -21,34 +23,37 @@ impl Game {
         }
     }
 
-    pub fn play_move(&mut self, mv: Move) {
-        match self.board.place_piece(self.current_player, mv) {
+    pub fn play_move(&self, mv: Move) -> Game {
+        let mut game = self.clone();
+        match game.board.place_piece(game.current_player, mv) {
             Some(new_board) => {
-                self.board = new_board;
+                game.board = new_board;
 
-                let black_moves = self.board.get_legal_moves(Player::Black);
-                let white_moves = self.board.get_legal_moves(Player::White);
+                let black_moves = game.board.get_legal_moves(Player::Black);
+                let white_moves = game.board.get_legal_moves(Player::White);
 
                 if black_moves.is_empty() && white_moves.is_empty() {
-                    let (black_count, white_count) = self.board.count_pieces();
+                    let (black_count, white_count) = game.board.count_pieces();
                     if black_count > white_count {
-                        self.state = GameState::Winner(Player::Black)
+                        game.state = GameState::Winner(Player::Black)
                     } else if white_count > black_count {
-                        self.state = GameState::Winner(Player::White)
+                        game.state = GameState::Winner(Player::White)
                     } else {
-                        self.state = GameState::Draw
+                        game.state = GameState::Draw
                     }
-                    return;
+                    return game;
                 }
 
-                self.switch_turn();
-                let next_moves = self.board.get_legal_moves(self.current_player);
+                game.switch_turn();
+                let next_moves = game.board.get_legal_moves(game.current_player);
                 if next_moves.is_empty() {
-                    self.switch_turn();
+                    game.switch_turn();
                 }
+                return game;
             }
             None => {
-                println!("Illegal move for {:?}, {:?}!", self.current_player, mv)
+                println!("Illegal move for {:?}, {:?}!", game.current_player, mv);
+                return game;
             }
         }
     }
@@ -59,5 +64,13 @@ impl Game {
 
     pub fn is_over(&self) -> bool {
         matches!(self.state, GameState::Winner(_) | GameState::Draw)
+    }
+
+    pub fn evaluate(&self) -> i32 {
+        let (black, white) = self.board.count_pieces();
+        match self.current_player {
+            Player::Black => black - white,
+            Player::White => white - black,
+        }
     }
 }
