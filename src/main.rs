@@ -4,8 +4,8 @@ mod game;
 use rand::seq::IndexedRandom;
 
 use crate::{
-    board::Cell,
-    game::{Game, GameResult, GameState},
+    board::Player,
+    game::{Game, GameState},
 };
 
 fn main() {
@@ -17,19 +17,17 @@ fn main() {
         let mut game = Game::new(8);
 
         while !game.is_over() {
-            let legal_moves = game.board.get_legal_moves(game.turn);
-            let chosen_move = legal_moves.choose(&mut rand::rng()).unwrap();
+            let legal_moves = game.board.get_legal_moves(game.current_player);
+            let mv = legal_moves.choose(&mut rand::rng()).unwrap();
 
-            game.play_move(*chosen_move);
+            game.play_move(*mv);
         }
 
-        // game.board.display();
-        if let GameState::GameOver(result) = game.state {
-            match result {
-                GameResult::Winner(Cell::Black) => black_wins += 1,
-                GameResult::Winner(Cell::White) => white_wins += 1,
-                _ => draws += 1,
-            }
+        match game.state {
+            GameState::Winner(Player::Black) => black_wins += 1,
+            GameState::Winner(Player::White) => white_wins += 1,
+            GameState::Draw => draws += 1,
+            _ => {}
         }
     }
 

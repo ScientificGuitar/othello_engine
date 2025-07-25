@@ -1,18 +1,14 @@
-use crate::board::{Board, Cell, Position};
-
-pub enum GameResult {
-    Draw,
-    Winner(Cell),
-}
+use crate::board::{Board, Move, Player};
 
 pub enum GameState {
-    WaitingForMove,
-    GameOver(GameResult),
+    InProgress,
+    Winner(Player),
+    Draw,
 }
 
 pub struct Game {
     pub board: Board,
-    pub turn: Cell,
+    pub current_player: Player,
     pub state: GameState,
 }
 
@@ -20,59 +16,48 @@ impl Game {
     pub fn new(board_size: usize) -> Self {
         Game {
             board: Board::new(board_size),
-            turn: Cell::Black,
-            state: GameState::WaitingForMove,
+            current_player: Player::Black,
+            state: GameState::InProgress,
         }
     }
 
-    pub fn play_move(&mut self, mv: Position) {
-        if let GameState::GameOver(_) = self.state {
-            println!("Game is over. No more moves allowed.");
-            return;
+    pub fn play_move(&mut self, mv: Move) {
+        match self.board.place_piece(self.current_player, mv) {
+            Some(new_board) => {
+                self.board = new_board;
+
+                let black_moves = self.board.get_legal_moves(Player::Black);
+                let white_moves = self.board.get_legal_moves(Player::White);
+
+                if black_moves.is_empty() && white_moves.is_empty() {
+                    let (black_count, white_count) = self.board.count_pieces();
+                    if black_count > white_count {
+                        self.state = GameState::Winner(Player::Black)
+                    } else if white_count > black_count {
+                        self.state = GameState::Winner(Player::White)
+                    } else {
+                        self.state = GameState::Draw
+                    }
+                    return;
+                }
+
+                self.switch_turn();
+                let next_moves = self.board.get_legal_moves(self.current_player);
+                if next_moves.is_empty() {
+                    self.switch_turn();
+                }
+            }
+            None => {
+                println!("Illegal move for {:?}, {:?}!", self.current_player, mv)
+            }
         }
-
-        let legal_moves = self.board.get_legal_moves(self.turn);
-
-        if !legal_moves.contains(&mv) {
-            println!("Illegal move!");
-            return;
-        }
-
-        self.board = self.board.place_piece(self.turn, mv);
-
-        let black_moves = self.board.get_legal_moves(Cell::Black);
-        let white_moves = self.board.get_legal_moves(Cell::White);
-
-        if black_moves.is_empty() && white_moves.is_empty() {
-            let (black_count, white_count) = self.board.count_pieces();
-            self.state = GameState::GameOver(if black_count > white_count {
-                GameResult::Winner(Cell::Black)
-            } else if white_count > black_count {
-                GameResult::Winner(Cell::White)
-            } else {
-                GameResult::Draw
-            });
-            return;
-        }
-
-        self.switch_turn();
-        let next_moves = self.board.get_legal_moves(self.turn);
-        if next_moves.is_empty() {
-            self.switch_turn();
-        }
-
-        self.state = GameState::WaitingForMove;
     }
 
     fn switch_turn(&mut self) {
-        self.turn = match self.turn {
-            Cell::White => Cell::Black,
-            Cell::Black => Cell::White,
-            _ => Cell::Empty,
-        };
+        self.current_player = self.current_player.opponent();
     }
 
     pub fn is_over(&self) -> bool {
-        matches!(self.state, GameState::GameOver(_))
+        matches!(self.state, GameState::Winner(_) | GameState::Draw)
     }
 }

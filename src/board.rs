@@ -1,19 +1,27 @@
 use std::cmp;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Cell {
-    Empty,
-    White,
+pub enum Player {
     Black,
+    White,
+}
+
+impl Player {
+    pub fn opponent(self) -> Self {
+        match self {
+            Player::Black => Player::White,
+            Player::White => Player::Black,
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct Board {
-    grid: Vec<Vec<Cell>>,
+    grid: Vec<Vec<Option<Player>>>,
     size: usize,
 }
 
-pub type Position = (usize, usize);
+pub type Move = (usize, usize);
 
 impl Board {
     pub fn new(mut board_size: usize) -> Self {
@@ -24,22 +32,18 @@ impl Board {
         let upper = size / 2;
         let lower = upper - 1;
 
-        let mut grid = vec![vec![Cell::Empty; board_size]; board_size];
+        let mut grid = vec![vec![None; board_size]; board_size];
 
-        grid[lower][lower] = Cell::White;
-        grid[lower][upper] = Cell::Black;
-        grid[upper][lower] = Cell::Black;
-        grid[upper][upper] = Cell::White;
+        grid[lower][lower] = Some(Player::White);
+        grid[lower][upper] = Some(Player::Black);
+        grid[upper][lower] = Some(Player::Black);
+        grid[upper][upper] = Some(Player::White);
 
         Self { grid, size }
     }
 
-    pub fn get_legal_moves(&self, player: Cell) -> Vec<Position> {
-        let opponent: Cell = match player {
-            Cell::Black => Cell::White,
-            Cell::White => Cell::Black,
-            _ => return vec![], // return no legal moves if player is not valid
-        };
+    pub fn get_legal_moves(&self, player: Player) -> Vec<Move> {
+        let opponent = player.opponent();
 
         let directions: [(i32, i32); 8] = [
             (1, 1),
@@ -52,11 +56,11 @@ impl Board {
             (-1, -1),
         ];
 
-        let mut legal_moves: Vec<Position> = vec![];
+        let mut legal_moves: Vec<Move> = vec![];
 
         for row in 0..self.size {
             for col in 0..self.size {
-                if self.grid[row][col] != Cell::Empty {
+                if self.grid[row][col] != None {
                     continue;
                 }
 
@@ -68,7 +72,7 @@ impl Board {
                         continue;
                     }
 
-                    if self.grid[x as usize][y as usize] != opponent {
+                    if self.grid[x as usize][y as usize] != Some(opponent) {
                         continue;
                     }
 
@@ -76,15 +80,17 @@ impl Board {
                     y += dy;
 
                     while x >= 0 && x < self.size as i32 && y >= 0 && y < self.size as i32 {
-                        let cell: Cell = self.grid[x as usize][y as usize];
-                        if cell == opponent {
-                            x += dx;
-                            y += dy;
-                        } else if cell == player {
-                            legal_moves.push((row, col));
-                            break 'outer;
-                        } else {
-                            break;
+                        match self.grid[x as usize][y as usize] {
+                            Some(p) if p == opponent => {
+                                x += dx;
+                                y += dy;
+                            }
+                            Some(p) if p == player => {
+                                legal_moves.push((row, col));
+                                break 'outer;
+                            }
+                            Some(_) => break, // catch-all for other players, not currently possible
+                            None => break,
                         }
                     }
                 }
@@ -94,13 +100,17 @@ impl Board {
         legal_moves
     }
 
-    pub fn place_piece(&self, player: Cell, mv: Position) -> Board {
+    pub fn place_piece(&mut self, player: Player, mv: Move) -> Option<Board> {
+        if self.is_legal_move(player, mv) {
+            Some(self.place_piece_unchecked(player, mv))
+        } else {
+            None
+        }
+    }
+
+    pub fn place_piece_unchecked(&mut self, player: Player, mv: Move) -> Board {
         let mut board = self.clone();
-        let opponent: Cell = match player {
-            Cell::Black => Cell::White,
-            Cell::White => Cell::Black,
-            _ => return board, // can't place a piece if it's not white or black
-        };
+        let opponent = player.opponent();
 
         let directions: [(i32, i32); 8] = [
             (1, 1),
@@ -113,25 +123,25 @@ impl Board {
             (-1, -1),
         ];
 
-        board.grid[mv.0][mv.1] = player;
+        board.grid[mv.0][mv.1] = Some(player);
 
         for (dx, dy) in directions {
             let mut x: i32 = mv.0 as i32 + dx;
             let mut y: i32 = mv.1 as i32 + dy;
 
-            let mut to_flip: Vec<Position> = vec![];
+            let mut to_flip: Vec<Move> = vec![];
 
             while x >= 0 && x < self.size as i32 && y >= 0 && y < self.size as i32 {
-                let cell: Cell = board.grid[x as usize][y as usize];
-                if cell == opponent {
-                    to_flip.push((x as usize, y as usize))
-                } else if cell == player {
-                    for (fx, fy) in &to_flip {
-                        board.grid[*fx][*fy] = player
+                match board.grid[x as usize][y as usize] {
+                    Some(p) if p == opponent => to_flip.push((x as usize, y as usize)),
+                    Some(p) if p == player => {
+                        for (fx, fy) in &to_flip {
+                            board.grid[*fx][*fy] = Some(player)
+                        }
+                        break;
                     }
-                    break;
-                } else {
-                    break;
+                    Some(_) => break, // catch-all for other players, not currently possible
+                    None => break,
                 }
 
                 x += dx;
@@ -142,16 +152,20 @@ impl Board {
         board
     }
 
+    pub fn is_legal_move(&self, player: Player, mv: Move) -> bool {
+        self.get_legal_moves(player).contains(&mv)
+    }
+
     pub fn count_pieces(&self) -> (i32, i32) {
         let mut black_score = 0;
         let mut white_score = 0;
 
         for row in 0..self.size {
             for col in 0..self.size {
-                if self.grid[row][col] == Cell::Black {
-                    black_score += 1;
-                } else if self.grid[row][col] == Cell::White {
-                    white_score += 1;
+                match self.grid[row][col] {
+                    Some(Player::Black) => black_score += 1,
+                    Some(Player::White) => white_score += 1,
+                    None => {}
                 }
             }
         }
@@ -165,9 +179,9 @@ impl Board {
             print!("{} ", i);
             for col in row.iter() {
                 let symbol: &'static str = match col {
-                    Cell::Empty => ".",
-                    Cell::White => "W",
-                    Cell::Black => "B",
+                    Some(Player::White) => "W",
+                    Some(Player::Black) => "B",
+                    None => ".",
                 };
                 print!("{} ", symbol)
             }
