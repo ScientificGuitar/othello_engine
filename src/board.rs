@@ -174,7 +174,7 @@ impl Board {
     }
 
     #[allow(dead_code)]
-    pub fn display(self) {
+    pub fn display(&self) {
         println!("  0 1 2 3 4 5 6 7");
         for (i, row) in self.grid.iter().enumerate() {
             print!("{} ", i);

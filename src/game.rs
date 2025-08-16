@@ -28,27 +28,8 @@ impl Game {
         match game.board.place_piece(game.current_player, mv) {
             Some(new_board) => {
                 game.board = new_board;
-
-                let black_moves = game.board.get_legal_moves(Player::Black);
-                let white_moves = game.board.get_legal_moves(Player::White);
-
-                if black_moves.is_empty() && white_moves.is_empty() {
-                    let (black_count, white_count) = game.board.count_pieces();
-                    if black_count > white_count {
-                        game.state = GameState::Winner(Player::Black)
-                    } else if white_count > black_count {
-                        game.state = GameState::Winner(Player::White)
-                    } else {
-                        game.state = GameState::Draw
-                    }
-                    return game;
-                }
-
                 game.switch_turn();
-                let next_moves = game.board.get_legal_moves(game.current_player);
-                if next_moves.is_empty() {
-                    game.switch_turn();
-                }
+                game.update_game_state();
                 return game;
             }
             None => {
@@ -56,6 +37,13 @@ impl Game {
                 return game;
             }
         }
+    }
+
+    pub fn pass_turn(&self) -> Game {
+        let mut game = self.clone();
+        game.switch_turn();
+        game.update_game_state();
+        game
     }
 
     fn switch_turn(&mut self) {
@@ -66,19 +54,39 @@ impl Game {
         matches!(self.state, GameState::Winner(_) | GameState::Draw)
     }
 
-    pub fn evaluate(&self) -> i32 {
-        if self.state == GameState::Winner(self.current_player) {
-            return 1000;
-        }
-        if self.state == GameState::Winner(self.current_player.opponent()) {
-            return -1000;
-        }
+    fn update_game_state(&mut self) {
+        let black_moves = self.board.get_legal_moves(Player::Black);
+        let white_moves = self.board.get_legal_moves(Player::White);
 
-        let (black, white) = self.board.count_pieces();
+        if black_moves.is_empty() && white_moves.is_empty() {
+            let (black_count, white_count) = self.board.count_pieces();
+            self.state = if black_count > white_count {
+                GameState::Winner(Player::Black)
+            } else if white_count > black_count {
+                GameState::Winner(Player::White)
+            } else {
+                GameState::Draw
+            };
+        }
+    }
 
-        match self.current_player {
-            Player::Black => black - white,
-            Player::White => white - black,
+    pub fn evaluate(&self, maximizing_player: Player) -> i32 {
+        match self.state {
+            GameState::Winner(p) => {
+                if p == self.current_player {
+                    1000
+                } else {
+                    -1000
+                }
+            }
+            GameState::Draw => 0,
+            GameState::InProgress => {
+                let (black, white) = self.board.count_pieces();
+                match self.current_player {
+                    Player::Black => black - white,
+                    Player::White => white - black,
+                }
+            }
         }
     }
 }
